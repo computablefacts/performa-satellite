@@ -37,11 +37,14 @@ if (args.install || (args.other && (args.other[0] == 'install'))) {
 		// first time installation, add self to a schedule task
 		const taskName = 'performa-satellite';
 		// Check if the task already exists
-		cp.exec(`schtasks /query /tn ${taskName}`, (error, stdout, stderr) => {
+		cp.exec(`schtasks /query /tn ${taskName}`, (err, stdout, stderr) => {
 			// If the task does not exist, create it
 			if (!stdout.includes(taskName)) {
-				cp.exec(`schtasks /create /tn ${taskName} /tr "${self_bin}" /sc minute /mo 1 /st 00:00 /ru SYSTEM`, (error, stdout, stderr) => {
-					if (error) return callback(error);
+				cp.exec(`schtasks /create /tn ${taskName} /tr "powershell.exe -File ${self_bin}" /sc minute /mo 1 /st 00:00 /ru "SYSTEM"`, (err, stdout, stderr) => {
+					if (err) {
+						console.error(`Error creating the task: ${err}`);
+						process.exit(1);
+					}
 					print(`\nPerforma Satellite has been installed to scheduled task: ${taskName}\n`);
 
 					createConfigFile();
@@ -52,8 +55,11 @@ if (args.install || (args.other && (args.other[0] == 'install'))) {
 			}
 			else {
 				// If the task already exists, update it
-				cp.exec(`schtasks /change /tn ${taskName} /tr "${self_bin}" /ri 1 /st 00:00 /ru SYSTEM`, (error, stdout, stderr) => {
-					if (error) return callback(error);
+				cp.exec(`schtasks /change /tn ${taskName} /tr "powershell.exe -File ${self_bin}" /ri 1 /st 00:00 /ru "SYSTEM"`, (err, stdout, stderr) => {
+					if (err) {
+						console.error(`Error updating the task: ${err}`);
+						process.exit(1);
+					}
 					print(`\nPerforma Satellite has been updated to scheduled task: ${taskName}\n`);
 
 					createConfigFile();
