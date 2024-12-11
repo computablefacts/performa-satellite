@@ -33,30 +33,58 @@ var config_file = Path.join( Path.dirname( self_bin ), 'config.json' );
 var config = {};
 
 if (args.install || (args.other && (args.other[0] == 'install'))) {
-	// first time installation, add self to crontab
-	var raw_tab = "";
-	raw_tab += "# Run Performa Satellite data collector once per minute.\n";
-	raw_tab += "# See: https://github.com/jhuckaby/performa-satellite\n";
-	raw_tab += "PATH=$PATH:/usr/bin:/bin:/usr/local/bin:/usr/sbin:/sbin:/usr/local/sbin\n";
-	raw_tab += '* * * * * root ' + self_bin + " --quiet\n";
-	
-	var cron_file = '/etc/cron.d/performa-satellite';
-	fs.writeFileSync( cron_file, raw_tab, { mode: 0o644 } );
-	// try to give crond a hint that it needs to reload
-	if (fs.existsSync('/etc/crontab')) fs.utimesSync( '/etc/crontab', new Date(), new Date() );
-	if (fs.existsSync('/var/spool/cron')) fs.utimesSync( '/var/spool/cron', new Date(), new Date() );
-	print("\nPerforma Satellite has been installed to cron:\n\t" + cron_file + "\n");
-	
-	if (!fs.existsSync(config_file)) {
-		config = { enabled: true, host: "performa.local:5511", secret_key: "CHANGE_ME", group: "" };
-		var raw_config = JSON.stringify( config, null, "\t" );
-		fs.writeFileSync( config_file, raw_config, { mode: 0o600 } );
-		print("\nA sample config file has been created: " + config_file + ":\n");
-		print( raw_config + "\n" );
+	if (process.platform == 'win32') {
+		// first time installation, add self to a schedule task
+		const taskName = 'performa-satellite';
+		// Check if the task already exists
+		cp.exec(`schtasks /query /tn ${taskName}`, (error, stdout, stderr) => {
+			// If the task does not exist, create it
+			if (!stdout.includes(taskName)) {
+				cp.exec(`schtasks /create /tn ${taskName} /tr "${self_bin}" /sc minute /mo 1 /st 00:00 /ru SYSTEM`, (error, stdout, stderr) => {
+					if (error) return callback(error);
+					print(`\nPerforma Satellite has been installed to scheduled task: ${taskName}\n`);
+
+					createConfigFile();
+		
+					print("\n");
+					process.exit(0);
+				});
+			}
+			else {
+				// If the task already exists, update it
+				cp.exec(`schtasks /change /tn ${taskName} /tr "${self_bin}" /ri 1 /st 00:00 /ru SYSTEM`, (error, stdout, stderr) => {
+					if (error) return callback(error);
+					print(`\nPerforma Satellite has been updated to scheduled task: ${taskName}\n`);
+
+					createConfigFile();
+		
+					print("\n");
+					process.exit(0);
+				});
+			}
+
+		});
+	} else {
+		// process.platform != 'win32'
+		// first time installation, add self to crontab
+		var raw_tab = "";
+		raw_tab += "# Run Performa Satellite data collector once per minute.\n";
+		raw_tab += "# See: https://github.com/jhuckaby/performa-satellite\n";
+		raw_tab += "PATH=$PATH:/usr/bin:/bin:/usr/local/bin:/usr/sbin:/sbin:/usr/local/sbin\n";
+		raw_tab += '* * * * * root ' + self_bin + " --quiet\n";
+		
+		var cron_file = '/etc/cron.d/performa-satellite';
+		fs.writeFileSync( cron_file, raw_tab, { mode: 0o644 } );
+		// try to give crond a hint that it needs to reload
+		if (fs.existsSync('/etc/crontab')) fs.utimesSync( '/etc/crontab', new Date(), new Date() );
+		if (fs.existsSync('/var/spool/cron')) fs.utimesSync( '/var/spool/cron', new Date(), new Date() );
+		print("\nPerforma Satellite has been installed to cron:\n\t" + cron_file + "\n");	
+
+		createConfigFile();
+		
+		print("\n");
+		process.exit(0);
 	}
-	
-	print("\n");
-	process.exit(0);
 }
 else if (args.uninstall || (args.other && (args.other[0] == 'uninstall'))) {
 	// remove from cron and exit
@@ -707,3 +735,14 @@ function getOpenFiles(callback) {
 		
 	}); // cp.exec
 };
+
+// Function to create the configuration file if it does not exist
+function createConfigFile() {
+	if (!fs.existsSync(config_file)) {
+		config = { enabled: true, host: "performa.local:5511", secret_key: "CHANGE_ME", group: "" };
+		var raw_config = JSON.stringify( config, null, "\t" );
+		fs.writeFileSync( config_file, raw_config, { mode: 0o600 } );
+		print("\nA sample config file has been created: " + config_file + ":\n");
+		print( raw_config + "\n" );
+	}
+}
