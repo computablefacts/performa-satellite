@@ -269,6 +269,7 @@ async.series([
 	},*/
 	function(callback) {
 		// disk IO
+		if (process.platform != 'windows') return process.nextTick( callback );
 		si.disksIO( function(data) {
 			info.data.stats.io = data;
 			callback();
@@ -276,6 +277,7 @@ async.series([
 	},
 	function(callback) {
 		// filesystem stats
+		if (process.platform != 'windows') return process.nextTick( callback );
 		si.fsStats( function(data) {
 			info.data.stats.fs = data;
 			callback();
