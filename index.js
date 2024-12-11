@@ -17,7 +17,7 @@ var si = require('systeminformation');
 var sqparse = require('shell-quote').parse;
 
 var request = new Request("Performa-Satellite/1.1.4");
-request.setTimeout( 5 * 1000 ); // 3 seconds
+request.setTimeout( 5 * 1000 ); // 5 seconds
 request.setAutoError( true );
 request.setRetries( 5 );
 request.setAutoContentLength( false );
