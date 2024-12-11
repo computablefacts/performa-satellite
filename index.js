@@ -93,22 +93,49 @@ if (args.install || (args.other && (args.other[0] == 'install'))) {
 	}
 }
 else if (args.uninstall || (args.other && (args.other[0] == 'uninstall'))) {
-	// remove from cron and exit
-	var cron_file = '/etc/cron.d/performa-satellite';
-	if (!fs.existsSync(cron_file)) die("\nPerforma Satellite is not currently installed, so just delete this file and it's super gone.\n\n");
-	fs.unlinkSync( cron_file );
-	
-	// also cleanup legacy cron.d filename if applicable
-	if (fs.existsSync(cron_file + '.cron')) fs.unlinkSync(cron_file + '.cron');
-	
-	// try to give crond a hint that it needs to reload
-	if (fs.existsSync('/etc/crontab')) fs.utimesSync( '/etc/crontab', new Date(), new Date() );
-	if (fs.existsSync('/var/spool/cron')) fs.utimesSync( '/var/spool/cron', new Date(), new Date() );
-	if (fs.existsSync(config_file)) fs.unlinkSync( config_file );
-	print("\nPerforma Satellite has been removed.\n");
-	print("To complete the uninstall, simply delete this file.\n");
-	print("\n");
-	process.exit(0);
+	if (process.platform == 'win32') {
+		// remove the schedule task and exit
+		const taskName = 'performa-satellite';
+		// Check if the task already exists
+		cp.exec(`schtasks /query /tn ${taskName}`, (err, stdout, stderr) => {
+			// If the task does not exist, no need to uninstall
+			if (!stdout.includes(taskName)) {
+				die("\nPerforma Satellite is not currently installed, so just delete this file and it's super gone.\n\n");
+			}
+			else {
+				// If the task already exists, delete it
+				cp.exec(`schtasks /delete /f /tn ${taskName}`, (err, stdout, stderr) => {
+					if (err) {
+						console.error(`Error deleting the task: ${err}`);
+						process.exit(1);
+					}
+					if (fs.existsSync(config_file)) fs.unlinkSync( config_file );
+					print("\nPerforma Satellite has been removed.\n");
+					print("To complete the uninstall, simply delete this file.\n");
+					print("\n");
+					process.exit(0);
+				});
+			}
+		});
+	} else {
+		// process.platform != 'win32'
+		// remove from cron and exit
+		var cron_file = '/etc/cron.d/performa-satellite';
+		if (!fs.existsSync(cron_file)) die("\nPerforma Satellite is not currently installed, so just delete this file and it's super gone.\n\n");
+		fs.unlinkSync( cron_file );
+		
+		// also cleanup legacy cron.d filename if applicable
+		if (fs.existsSync(cron_file + '.cron')) fs.unlinkSync(cron_file + '.cron');
+		
+		// try to give crond a hint that it needs to reload
+		if (fs.existsSync('/etc/crontab')) fs.utimesSync( '/etc/crontab', new Date(), new Date() );
+		if (fs.existsSync('/var/spool/cron')) fs.utimesSync( '/var/spool/cron', new Date(), new Date() );
+		if (fs.existsSync(config_file)) fs.unlinkSync( config_file );
+		print("\nPerforma Satellite has been removed.\n");
+		print("To complete the uninstall, simply delete this file.\n");
+		print("\n");
+		process.exit(0);
+	}
 }
 
 // optional config file, in same dir as executable or custom location
