@@ -40,7 +40,7 @@ if (args.install || (args.other && (args.other[0] == 'install'))) {
 		cp.exec(`schtasks /query /tn ${taskName}`, (err, stdout, stderr) => {
 			// If the task does not exist, create it
 			if (!stdout.includes(taskName)) {
-				cp.exec(`schtasks /create /tn ${taskName} /tr "powershell.exe -File ${self_bin}" /sc minute /mo 1 /st 00:00 /ru "SYSTEM"`, (err, stdout, stderr) => {
+				cp.exec(`schtasks /create /tn ${taskName} /tr "${self_bin}" /sc minute /mo 1 /st 00:00 /ru "SYSTEM"`, (err, stdout, stderr) => {
 					if (err) {
 						console.error(`Error creating the task: ${err}`);
 						process.exit(1);
@@ -55,7 +55,7 @@ if (args.install || (args.other && (args.other[0] == 'install'))) {
 			}
 			else {
 				// If the task already exists, update it
-				cp.exec(`schtasks /change /tn ${taskName} /tr "powershell.exe -File ${self_bin}" /ri 1 /st 00:00 /ru "SYSTEM"`, (err, stdout, stderr) => {
+				cp.exec(`schtasks /change /tn ${taskName} /tr "${self_bin}" /ri 1 /st 00:00 /ru "SYSTEM"`, (err, stdout, stderr) => {
 					if (err) {
 						console.error(`Error updating the task: ${err}`);
 						process.exit(1);
